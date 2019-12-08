@@ -2,7 +2,7 @@
  * Module dependencies.
  */
 var express = require('express');
-var path = require('path')
+var path = require('path');
 //var logger = require('morgan')
 //var methodOverride = require('method-override')
 //var session = require('express-session')
@@ -12,7 +12,7 @@ var app = express();
 
 app.set('view engine', 'pug');
 app.set('views', path.join(__dirname, '/views'))
-//app.use(express.json());
+app.use(express.json());
 app.use(express.static(path.join(__dirname, '/public')))
 //app.use(logger('dev'))
 //app.use(methodOverride());
