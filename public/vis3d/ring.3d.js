@@ -4,7 +4,10 @@ function main() {
     const segmentLayer = 4;
     const pieceHeightScale = 3;
     const resourceColorPallete = [ 0xC0C0C0, 0xC0C0C0, 0x008000, 0x008000, 0x008000, 0xFFFF00, 0xFFFF00, 0x0000FF ] // Silver, Silver, Green, Green, Green, Yellow, Yellow, Blue
-    //const securityColorPallete = [ 0x808080, 0x008000, 0xFFFF00, 0xFFA500, 0xFF0000 ] // Gray, Green, Yellow, Orange, Red
+    const securityColorPallete = [ 0x808080, 0x008000, 0xFFFF00, 0xFFA500, 0xFF0000, 0x800000, 0x000000 ] // Gray, Green, Yellow, Orange, Red, Maroon, Black
+    const securityMode = false;
+    const radiusMargin = 0.2;
+    const angleMargin = 0.1;
 
 
     //Document Management
@@ -58,12 +61,19 @@ function main() {
             return null;
         }
 
-        const margin = 0.2
-        const innerRadius = ringSize * (layerNum - 1);
-        const outerRadius = ringSize * layerNum;
-        const startRadian = degreeToRadian(startDegree + margin);
-        const endRadian = degreeToRadian(endDegree - margin);
-        const pieceColor = resourceColorPallete[layerNum-1]
+        const innerRadius = (ringSize * (layerNum - 1)) + radiusMargin;
+        const outerRadius = (ringSize * layerNum) - radiusMargin;
+        const startRadian = degreeToRadian(startDegree + angleMargin);
+        const endRadian = degreeToRadian(endDegree - angleMargin);
+       
+        var pieceColor, verticalLevel;
+        if (securityMode == true){
+            pieceColor = securityColorPallete[securityLevel-1];
+            verticalLevel = securityLevel;
+        } else { //Resource Mode
+            pieceColor = resourceColorPallete[layerNum-1];
+            verticalLevel = 1;
+        }
         console.log("[createRingPiece]" + " layerNum: " + layerNum + " securityLevel: " + securityLevel + " startDegree: "+ startDegree + " endDegree: " + endDegree);
 
         const ringPieceShape = new THREE.Shape();
@@ -73,7 +83,7 @@ function main() {
         ringPieceShape.absarc(0, 0, outerRadius, endRadian, startRadian, true);
         ringPieceShape.lineTo(getCircleX(0, innerRadius, startRadian), getCircleY(0, innerRadius, startRadian));
 
-        const extrudeSetting = getExtrudeSetting(securityLevel);
+        const extrudeSetting = getExtrudeSetting(verticalLevel);
         const geometry = new THREE.ExtrudeGeometry( ringPieceShape, extrudeSetting );
         const ringPieceMesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { color: pieceColor } ) );
 
@@ -86,14 +96,21 @@ function main() {
         }
         console.log("[createCenterCircle]" + " layerNum: " + layerNum + " securityLevel: " + securityLevel);
 
-        const pieceColor = resourceColorPallete[layerNum-1];
-        const radius = ringSize;
+        var pieceColor, verticalLevel;
+        if (securityMode == true){
+            pieceColor = securityColorPallete[securityLevel-1];
+            verticalLevel = securityLevel;
+        } else { //Resource Mode
+            pieceColor = resourceColorPallete[layerNum-1];
+            verticalLevel = 1;
+        }
+        const radius = ringSize - radiusMargin;
         
         const centerCircleShape = new THREE.Shape();
         centerCircleShape.moveTo(0, 0);
         centerCircleShape.absarc(0, 0, radius, degreeToRadian(0), degreeToRadian(360), false);
 
-        const extrudeSetting = getExtrudeSetting(securityLevel);
+        const extrudeSetting = getExtrudeSetting(verticalLevel);
         const geometry = new THREE.ExtrudeGeometry( centerCircleShape, extrudeSetting );
         const centerCircleMesh = new THREE.Mesh ( geometry, new THREE.MeshPhongMaterial( { color: pieceColor }) );
 
@@ -101,7 +118,6 @@ function main() {
     }
 
 
-    // ToDo: Implementing Main Logic
     const group = new THREE.Group();
     scene.add( group );
 
@@ -127,6 +143,7 @@ function main() {
     console.log(topologyVar);
 
     function drawRingSegments(jsonVar, startDegree, endDegree){
+        // Implementing Main Logic
         // Layer, Start Radian, End Radian
         const secLevel = jsonVar.security;
         const layerNum = jsonVar.layer;
