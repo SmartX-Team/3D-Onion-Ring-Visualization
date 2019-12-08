@@ -5,7 +5,7 @@ function main() {
     const pieceHeightScale = 3;
     const resourceColorPallete = [ 0xC0C0C0, 0xC0C0C0, 0x008000, 0x008000, 0x008000, 0xFFFF00, 0xFFFF00, 0x0000FF ] // Silver, Silver, Green, Green, Green, Yellow, Yellow, Blue
     const securityColorPallete = [ 0x808080, 0x008000, 0xFFFF00, 0xFFA500, 0xFF0000, 0x800000, 0x000000 ] // Gray, Green, Yellow, Orange, Red, Maroon, Black
-    const securityMode = false;
+    const securityMode = true;
     const radiusMargin = 0.2;
     const angleMargin = 0.1;
 
@@ -47,7 +47,7 @@ function main() {
 
     function getExtrudeSetting( ringHeight ){
         const extrudeSetting = { 
-            amount: ringHeight * pieceHeightScale, 
+            amount: ringHeight, 
             bevelEnabled: true, 
             steps: 1, 
             bevelSize: 0, 
@@ -56,7 +56,57 @@ function main() {
         return extrudeSetting;
     }
 
-    function createRingPiece( layerNum, securityLevel, startDegree, endDegree ){
+    function createTextMesh ( txt, posX, posY, posZ ){
+        console.log("[createTextMesh]" + " txt: " + txt + " txtPosX: " + posX + " txtPosY: " + posY + " txtPosZ: " + posZ);
+
+        var loader = new THREE.FontLoader();
+        var font = loader.parse(fontJSON);
+        console.log(font);
+        var txtGeometry = new THREE.TextGeometry( txt, {
+            font: font,
+            size: 1,
+            height: 0.5,
+            curveSegments: 12,
+            bevelEnabled: false,
+            bevelThickness: 0.1,
+            bevelSize: 0.1,
+            bevelSegments: 0.1
+        } );
+
+        var txtMaterial = new THREE.MeshPhongMaterial({color:0x000000});
+        var txtMesh = new THREE.Mesh(txtGeometry, txtMaterial);
+        txtMesh.position.x = posX;
+        txtMesh.position.y = posY;
+        txtMesh.position.z = posZ;
+
+        return txtMesh;
+    }
+
+    function createCenterCircle( layerNum, pieceColor, height, pieceName ){
+        if (layerNum != 1){
+            return null;
+        }
+        console.log("[createCenterCircle]" + " layerNum: " + layerNum + " pieceColor: " + pieceColor + " height: " + height);
+
+        const radius = ringSize - radiusMargin;
+        const centerCircleShape = new THREE.Shape();
+        centerCircleShape.moveTo(0, 0);
+        centerCircleShape.absarc(0, 0, radius, degreeToRadian(0), degreeToRadian(360), false);
+
+        const extrudeSetting = getExtrudeSetting(height);
+        const geometry = new THREE.ExtrudeGeometry( centerCircleShape, extrudeSetting );
+        const centerCircleMesh = new THREE.Mesh ( geometry, new THREE.MeshPhongMaterial( { color: pieceColor }) );
+
+        const txtPosX = 0
+        const txtPosY = 0
+        const txtPosZ = height + 1;
+        const txtMesh = createTextMesh(pieceName, txtPosX, txtPosY, txtPosZ);
+        centerCircleMesh.add(txtMesh);
+
+        return centerCircleMesh;
+    }
+
+    function createRingPiece( layerNum, pieceColor, height, startDegree, endDegree, pieceName ){
         if (layerNum < 2 || startDegree < 0 || endDegree > 360){
             return null;
         }
@@ -65,16 +115,8 @@ function main() {
         const outerRadius = (ringSize * layerNum) - radiusMargin;
         const startRadian = degreeToRadian(startDegree + angleMargin);
         const endRadian = degreeToRadian(endDegree - angleMargin);
-       
-        var pieceColor, verticalLevel;
-        if (securityMode == true){
-            pieceColor = securityColorPallete[securityLevel-1];
-            verticalLevel = securityLevel;
-        } else { //Resource Mode
-            pieceColor = resourceColorPallete[layerNum-1];
-            verticalLevel = 1;
-        }
-        console.log("[createRingPiece]" + " layerNum: " + layerNum + " securityLevel: " + securityLevel + " startDegree: "+ startDegree + " endDegree: " + endDegree);
+
+        console.log("[createRingPiece]" + " layerNum: " + layerNum + " pieceColor: " + pieceColor + " height: " + height + " startDegree: "+ startDegree + " endDegree: " + endDegree);
 
         const ringPieceShape = new THREE.Shape();
         ringPieceShape.moveTo(getCircleX(0, innerRadius, startRadian), getCircleY(0, innerRadius, startRadian));
@@ -83,43 +125,21 @@ function main() {
         ringPieceShape.absarc(0, 0, outerRadius, endRadian, startRadian, true);
         ringPieceShape.lineTo(getCircleX(0, innerRadius, startRadian), getCircleY(0, innerRadius, startRadian));
 
-        const extrudeSetting = getExtrudeSetting(verticalLevel);
+        const extrudeSetting = getExtrudeSetting(height);
         const geometry = new THREE.ExtrudeGeometry( ringPieceShape, extrudeSetting );
-        const ringPieceMesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { color: pieceColor } ) );
+        var ringPieceMesh = new THREE.Mesh( geometry, new THREE.MeshPhongMaterial( { color: pieceColor } ) );
+
+
+        const midRadius = (outerRadius + innerRadius) / 2;
+        const midRadian = (endRadian + startRadian) / 2;
+        const txtPosX = getCircleX(0, midRadius, midRadian);
+        const txtPosY = getCircleY(0, midRadius, midRadian);
+        const txtPosZ = height + 1;
+        const txtMesh = createTextMesh(pieceName, txtPosX, txtPosY, txtPosZ);
+        ringPieceMesh.add(txtMesh);
 
         return ringPieceMesh;
     }
-
-    function createCenterCircle( layerNum, securityLevel ){
-        if (layerNum != 1){
-            return null;
-        }
-        console.log("[createCenterCircle]" + " layerNum: " + layerNum + " securityLevel: " + securityLevel);
-
-        var pieceColor, verticalLevel;
-        if (securityMode == true){
-            pieceColor = securityColorPallete[securityLevel-1];
-            verticalLevel = securityLevel;
-        } else { //Resource Mode
-            pieceColor = resourceColorPallete[layerNum-1];
-            verticalLevel = 1;
-        }
-        const radius = ringSize - radiusMargin;
-        
-        const centerCircleShape = new THREE.Shape();
-        centerCircleShape.moveTo(0, 0);
-        centerCircleShape.absarc(0, 0, radius, degreeToRadian(0), degreeToRadian(360), false);
-
-        const extrudeSetting = getExtrudeSetting(verticalLevel);
-        const geometry = new THREE.ExtrudeGeometry( centerCircleShape, extrudeSetting );
-        const centerCircleMesh = new THREE.Mesh ( geometry, new THREE.MeshPhongMaterial( { color: pieceColor }) );
-
-        return centerCircleMesh;
-    }
-
-
-    const group = new THREE.Group();
-    scene.add( group );
 
     function countRingSegments(jsonVar){
         //console.log(jsonVar);
@@ -139,9 +159,6 @@ function main() {
         return temp;
     }
 
-    countRingSegments(topologyVar);
-    console.log(topologyVar);
-
     function drawRingSegments(jsonVar, startDegree, endDegree){
         // Implementing Main Logic
         // Layer, Start Radian, End Radian
@@ -150,12 +167,21 @@ function main() {
 
         console.log("[drawRingSegments]" + " name: "+ jsonVar.name + " startDegree: " + startDegree + " endDegree: " + endDegree + " secLevel: " + secLevel + " layerNum: " + layerNum + " segments: " + jsonVar.segments);
 
+        var pieceColor, height;
+        if (securityMode == true){
+            pieceColor = securityColorPallete[secLevel-1];
+            height = secLevel * pieceHeightScale;
+        } else { //Resource Mode
+            pieceColor = resourceColorPallete[layerNum-1];
+            height = 1  * pieceHeightScale;
+        }
+
         // Create a visualization piece
-        if (jsonVar.layer == 1){
-            const center = createCenterCircle(1, jsonVar.security);
+        if (layerNum == 1){
+            const center = createCenterCircle(layerNum, pieceColor, height, jsonVar.name);
             group.add(center);
         } else {
-            const piece = createRingPiece( layerNum, secLevel, startDegree, endDegree );
+            const piece = createRingPiece(layerNum, pieceColor, height, startDegree, endDegree, jsonVar.name);
             group.add(piece);
         }
         
@@ -181,6 +207,12 @@ function main() {
         }
         
     }
+
+    const group = new THREE.Group();
+    scene.add( group );
+
+    countRingSegments(topologyVar);
+    console.log(topologyVar);
 
     drawRingSegments(topologyVar, 0, 360);
 
